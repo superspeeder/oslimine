@@ -1,0 +1,8 @@
+/bin/
+/iso_root/
+/obj/
+/image.iso
+/image.hdd
+/.cache/
+/limine/
+/compile_commands.json
