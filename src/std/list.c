@@ -3,8 +3,10 @@
 //
 
 #include "list.h"
+#include "trace.h"
 
 void flist_append(flist_t *list, flist_node_t *node) {
+    trace_call();
     flist_node_t *pre = list->head;
     if (pre == nullptr) {
         list->head = node;
@@ -17,6 +19,7 @@ void flist_append(flist_t *list, flist_node_t *node) {
 }
 
 void dlist_append(dlist_t *list, dlist_node_t *node) {
+    trace_call();
     dlist_node_t* pre = list->tail;
     if (pre == nullptr) {
         list->head = node;
@@ -31,6 +34,7 @@ void dlist_append(dlist_t *list, dlist_node_t *node) {
 }
 
 void flist_prepend(flist_t *list, flist_node_t *node) {
+    trace_call();
     if (list->head) {
         node->next = list->head;
     }
@@ -38,6 +42,7 @@ void flist_prepend(flist_t *list, flist_node_t *node) {
 }
 
 void dlist_prepend(dlist_t *list, dlist_node_t *node) {
+    trace_call();
     dlist_node_t* pre = list->head;
     if (pre == nullptr) {
         list->head = node;
@@ -52,6 +57,7 @@ void dlist_prepend(dlist_t *list, dlist_node_t *node) {
 }
 
 void flist_remove(flist_t *list, flist_node_t *node) {
+    trace_call();
     if (node == list->head) {
         list->head = node->next;
     } else { // not at the front, so we have to find the node before this one to relink things properly.
@@ -64,6 +70,7 @@ void flist_remove(flist_t *list, flist_node_t *node) {
 }
 
 void dlist_remove(dlist_t *list, dlist_node_t *node) {
+    trace_call();
     if (node == list->head) {
         list->head = node->next;
     }
@@ -82,6 +89,7 @@ void dlist_remove(dlist_t *list, dlist_node_t *node) {
 }
 
 flist_node_t *flist_pop(flist_t *list) {
+    trace_call();
     flist_node_t* node = list->head;
     list->head = node->next;
     node->next = nullptr;
@@ -89,6 +97,7 @@ flist_node_t *flist_pop(flist_t *list) {
 }
 
 dlist_node_t *dlist_pop_front(dlist_t *list) {
+    trace_call();
     dlist_node_t* node = list->head;
     list->head = node->next;
     if (node == list->tail) {
@@ -100,6 +109,7 @@ dlist_node_t *dlist_pop_front(dlist_t *list) {
 }
 
 dlist_node_t *dlist_pop_end(dlist_t *list) {
+    trace_call();
     dlist_node_t* node = list->tail;
     list->tail = node->prev;
     if (node == list->head) {

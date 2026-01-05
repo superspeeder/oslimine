@@ -2,53 +2,17 @@
 // Created by andy on 1/3/26.
 //
 
-#define NOTRACE
-
 #include "phys.h"
 
 #include "paging.h"
 
-#include "drivers/serial.h"
 #include "std/list.h"
 #include "std/mem.h"
 
 #include <stddef.h>
 
 #include "boot.h"
-
-static void _trace(const char *text) {
-    write_serial_string(SERIAL_COM1, "[TRACE] ");
-    write_serial_string(SERIAL_COM1, text);
-    write_serial_string(SERIAL_COM1, "\r\n");
-}
-
-static void _trace2(const char *text, const char *text2) {
-    write_serial_string(SERIAL_COM1, "[TRACE] ");
-    write_serial_string(SERIAL_COM1, text);
-    write_serial_string(SERIAL_COM1, text2);
-    write_serial_string(SERIAL_COM1, "\r\n");
-}
-
-static void _traceaddr(const uintptr_t ptr) {
-    write_serial_string(SERIAL_COM1, "[TRACE] Addr: ");
-    write_serial_hex(SERIAL_COM1, ptr);
-    write_serial_string(SERIAL_COM1, "\r\n");
-}
-
-#ifndef NOTRACE
-#define trace(...) _trace(__VA_ARGS__)
-#define trace2(...) _trace2(__VA_ARGS__)
-#define traceaddr(...) _traceaddr(__VA_ARGS__)
-#else
-#define trace(...)
-#define trace2(...)
-#define traceaddr(...)
-#endif
-
-#define trace_enter() trace2("Enter ", __func__)
-#define trace_call() trace2("Call ", __func__)
-#define trace_exit() trace2("Exit ", __func__)
-#define trace_log_addr(addr) traceaddr((uintptr_t)addr)
+#include "trace.h"
 
 /**
  * Minimum block size allowed (4KiB)
@@ -248,7 +212,9 @@ static void ba_init() {
     trace_exit();
 }
 
-static void ba_split(buddyalloc_block_t *block) {
+static void ba_split(flist_node_t *entry) {
+    trace_enter();
+    buddyalloc_block_t* block = entry->value;
     // REQUIRES: block->child_left and block->child_right are both null. block->order > 12.
 
     const uint8_t   child_order = block->order - 1;
@@ -259,32 +225,32 @@ static void ba_split(buddyalloc_block_t *block) {
     flist_node_t *left  = ba_new_block(left_base, child_order);
     flist_node_t *right = ba_new_block(right_base, child_order);
 
-    ((buddyalloc_block_t *)left->value)->parent  = block;
-    ((buddyalloc_block_t *)right->value)->parent = block;
+    ((buddyalloc_block_t *)left->value)->parent  = entry;
+    ((buddyalloc_block_t *)right->value)->parent = entry;
 
     block->child_left  = left;
     block->child_right = right;
+
+    trace_exit();
 }
 
 static void ba_mark_used(buddyalloc_block_t *block) {
-    trace_enter();
+    trace_call();
     block->flags |= BA_USED;
     if (block->parent) {
         buddyalloc_block_t *parent  = block->parent->value;
         buddyalloc_block_t *sibling = parent->child_left->value == block ? parent->child_right->value : parent->child_left->value;
-        if ((sibling->flags & (BA_USED | BA_UNAVAILABLE)) != 0) {
+        if (sibling && (sibling->flags & (BA_USED | BA_UNAVAILABLE)) != 0) {
             parent->flags |= BA_UNAVAILABLE;
         }
     }
-    trace_exit();
 }
 
 static void ba_mark_free(buddyalloc_block_t *block) {
-    trace_enter();
+    trace_call();
     block->flags &= ~BA_USED;
     buddyalloc_block_t *parent = block->parent->value;
     parent->flags &= ~BA_UNAVAILABLE;
-    trace_exit();
 }
 
 static bool ba_can_allocate(buddyalloc_block_t *block) {
@@ -369,31 +335,28 @@ static buddyalloc_block_t *ba_allocatedblock_containing(const uintptr_t addr) {
     return block;
 }
 
-static buddyalloc_block_t *ba_try_alloc_in(buddyalloc_block_t *block, const size_t size) {
+static buddyalloc_block_t *ba_try_alloc_in(flist_node_t *entry, const size_t size) {
+    buddyalloc_block_t *block = entry->value;
     trace_enter();
     if (!ba_can_allocate(block)) {
-        trace("cannot alloc");
         trace_exit();
         return nullptr;
     }
 
     if (((1ULL << block->order) < size)) {
-        trace("too small");
         trace_exit();
         return nullptr;
     }
 
     // If the block 1 order smaller isnt large enough to fit the requested size OR the current blocks order is the minimum allowed size, use the current block
     if ((1ULL << (block->order - 1)) < size || block->order == MIN_BUDDY_BLOCK_SIZE) {
-        trace("alloc this block");
         ba_mark_used(block);
         trace_exit();
         return block;
     }
 
     if (!block->child_left && !block->child_right) {
-        trace("split");
-        ba_split(block);
+        ba_split(entry);
     }
 
     if (block->child_left) {
@@ -405,7 +368,7 @@ static buddyalloc_block_t *ba_try_alloc_in(buddyalloc_block_t *block, const size
     }
 
     if (block->child_right) {
-        buddyalloc_block_t *block_out = ba_try_alloc_in(block->child_left, size);
+        buddyalloc_block_t *block_out = ba_try_alloc_in(block->child_right, size);
         if (block_out) {
             trace_exit();
             return block_out;
@@ -419,8 +382,7 @@ static buddyalloc_block_t *ba_try_alloc_in(buddyalloc_block_t *block, const size
 static buddyalloc_block_t *ba_alloc_block(const size_t size) {
     trace_enter();
     for (flist_node_t *node = buddyalloc_state.toplevel_blocks.head; node != nullptr; node = node->next) {
-        buddyalloc_block_t *block   = node->value;
-        buddyalloc_block_t *alloced = ba_try_alloc_in(block, size);
+        buddyalloc_block_t *alloced = ba_try_alloc_in(node, size);
         if (alloced) {
             trace_exit();
             return alloced;
@@ -432,13 +394,18 @@ static buddyalloc_block_t *ba_alloc_block(const size_t size) {
 }
 
 void init_phys() {
+    trace_enter();
     ba_init();
+    trace_exit();
 }
 
 void *palloc(const size_t size) {
+    trace_enter();
     buddyalloc_block_t *block = ba_alloc_block(size);
     if (block) {
+        trace_exit();
         return (void *)block->start_address;
     }
+    trace_exit();
     return nullptr;
 }

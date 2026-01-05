@@ -102,7 +102,7 @@ void kmain(void) {
     init_phys();
     init_paging();
 
-    void* ptr = palloc(1<<17);
+    void* ptr = palloc(1ULL<<32);
     write_serial_string(SERIAL_COM1, "Allocated Phys Addr: ");
     write_serial_hex(SERIAL_COM1, (uintptr_t)ptr);
     write_serial_string(SERIAL_COM1, "\r\n");

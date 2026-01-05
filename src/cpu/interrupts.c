@@ -6,6 +6,7 @@
 #include "interrupts.h"
 #include "gdt.h"
 #include "exceptions.h"
+#include "trace.h"
 
 struct __attribute__((packed)) idt_t {
     uint16_t size;
@@ -29,6 +30,7 @@ static struct idt_t idtr;
 
 
 void set_isr(const uint8_t index, const isr_t handler) {
+    trace_call();
     const uint64_t addr = (uint64_t) handler;
 
     idt[index].selector = GDT_KERNEL_CODE;
@@ -41,6 +43,7 @@ void set_isr(const uint8_t index, const isr_t handler) {
 }
 
 void set_isr_trap(const uint8_t index, const isr_t handler) {
+    trace_call();
     const uint64_t addr = (uint64_t) handler;
 
     idt[index].selector = GDT_KERNEL_CODE;
@@ -53,6 +56,7 @@ void set_isr_trap(const uint8_t index, const isr_t handler) {
 }
 
 void init_interrupts() {
+    trace_enter();
     idtr.size = NUM_IDT_ENTRIES * sizeof(struct idt_entry_t) - 1;
     idtr.address = (uint64_t) &idt[0];
 
@@ -60,4 +64,5 @@ void init_interrupts() {
 
     asm volatile ("lidt %0" : : "m"(idtr));
     asm volatile ("sti");
+    trace_exit();
 }
