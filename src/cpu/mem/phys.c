@@ -214,7 +214,7 @@ static void ba_init() {
 
 static void ba_split(flist_node_t *entry) {
     trace_enter();
-    buddyalloc_block_t* block = entry->value;
+    buddyalloc_block_t *block = entry->value;
     // REQUIRES: block->child_left and block->child_right are both null. block->order > 12.
 
     const uint8_t   child_order = block->order - 1;
@@ -256,6 +256,11 @@ static void ba_mark_free(buddyalloc_block_t *block) {
 static bool ba_can_allocate(buddyalloc_block_t *block) {
     trace_call();
     return !block->child_left && !block->child_right && ((block->flags & (BA_USED | BA_UNAVAILABLE)) == 0);
+}
+
+static bool ba_can_allocate_in(buddyalloc_block_t *block) {
+    trace_call();
+    return (block->flags & (BA_USED | BA_UNAVAILABLE)) == 0;
 }
 
 static bool ba_can_merge(buddyalloc_block_t *block) {
@@ -338,7 +343,7 @@ static buddyalloc_block_t *ba_allocatedblock_containing(const uintptr_t addr) {
 static buddyalloc_block_t *ba_try_alloc_in(flist_node_t *entry, const size_t size) {
     buddyalloc_block_t *block = entry->value;
     trace_enter();
-    if (!ba_can_allocate(block)) {
+    if (!ba_can_allocate_in(block)) {
         trace_exit();
         return nullptr;
     }
@@ -349,8 +354,11 @@ static buddyalloc_block_t *ba_try_alloc_in(flist_node_t *entry, const size_t siz
     }
 
     // If the block 1 order smaller isnt large enough to fit the requested size OR the current blocks order is the minimum allowed size, use the current block
-    if ((1ULL << (block->order - 1)) < size || block->order == MIN_BUDDY_BLOCK_SIZE) {
+    if (((1ULL << (block->order - 1)) < size || block->order == MIN_BUDDY_BLOCK_SIZE) && ba_can_allocate(block)) {
         ba_mark_used(block);
+        trace_log_addr(block);
+        traceint("order", block->order);
+        traceinth("base", block->start_address);
         trace_exit();
         return block;
     }

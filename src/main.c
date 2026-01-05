@@ -102,9 +102,15 @@ void kmain(void) {
     init_phys();
     init_paging();
 
-    void* ptr = palloc(1ULL<<32);
+    void* ptr = palloc(1ULL<<12);
+    void* ptr2 = palloc(1ULL<<12);
+
     write_serial_string(SERIAL_COM1, "Allocated Phys Addr: ");
     write_serial_hex(SERIAL_COM1, (uintptr_t)ptr);
+    write_serial_string(SERIAL_COM1, "\r\n");
+
+    write_serial_string(SERIAL_COM1, "Allocated Phys Addr: ");
+    write_serial_hex(SERIAL_COM1, (uintptr_t)ptr2);
     write_serial_string(SERIAL_COM1, "\r\n");
 
     // write_serial_string(SERIAL_COM1, "\033[1mInitializing ACPI:\033[0m\r\n");

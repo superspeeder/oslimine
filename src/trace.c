@@ -47,3 +47,27 @@ void _traceaddr(const uintptr_t ptr) {
     write_serial_hex(SERIAL_COM1, ptr);
     write_serial_string(SERIAL_COM1, "\r\n");
 }
+
+void _traceint(const char *text, const uint64_t val) {
+    write_serial_string(SERIAL_COM1, "[TRACE] ");
+    for (int64_t i = 0; i < tracestackdepth; i++) {
+        write_serial_string(SERIAL_COM1, "\033[2m|\033[0m   ");
+    }
+
+    write_serial_string(SERIAL_COM1, text);
+    write_serial_string(SERIAL_COM1, ": ");
+    write_serial_int(SERIAL_COM1, val);
+    write_serial_string(SERIAL_COM1, "\r\n");
+}
+
+void _traceinth(const char *text, const uint64_t val) {
+    write_serial_string(SERIAL_COM1, "[TRACE] ");
+    for (int64_t i = 0; i < tracestackdepth; i++) {
+        write_serial_string(SERIAL_COM1, "\033[2m|\033[0m   ");
+    }
+
+    write_serial_string(SERIAL_COM1, text);
+    write_serial_string(SERIAL_COM1, ": ");
+    write_serial_hex(SERIAL_COM1, val);
+    write_serial_string(SERIAL_COM1, "\r\n");
+}
