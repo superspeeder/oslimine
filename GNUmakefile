@@ -105,7 +105,7 @@ override NASMFILES := $(filter %.asm,$(SRCFILES))
 override OBJ := $(addprefix obj/,$(CFILES:.c=.c.o) $(ASFILES:.S=.S.o) $(NASMFILES:.asm=.asm.o))
 override HEADER_DEPS := $(addprefix obj/,$(CFILES:.c=.c.d) $(ASFILES:.S=.S.d))
 
-override QEMU_FLAGS := -m 8G -serial mon:stdio
+override QEMU_FLAGS := -m 8G -serial stdio
 
 # Default target. This must come first, before header dependencies.
 .PHONY: all

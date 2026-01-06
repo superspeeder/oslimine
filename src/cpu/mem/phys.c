@@ -407,13 +407,21 @@ void init_phys() {
     trace_exit();
 }
 
-void *palloc(const size_t size) {
+uintptr_t palloc(const size_t size) {
     trace_enter();
     buddyalloc_block_t *block = ba_alloc_block(size);
     if (block) {
         trace_exit();
-        return (void *)block->start_address;
+        return block->start_address;
     }
     trace_exit();
-    return nullptr;
+    return 0ULL;
+}
+
+void* pvalloc(const size_t size) {
+    trace_enter();
+    uintptr_t addr = palloc(size);
+    void* p = (void*)(addr + get_limine_hhdm()->offset);
+    trace_exit();
+    return p;
 }

@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <limine.h>
 
+#include "std/mem.h"
 #include "boot.h"
 #include "cpu/gdt.h"
 #include "cpu/mem/phys.h"
@@ -99,22 +100,25 @@ void kmain(void) {
     init_interrupts();
     log_executable_info();
 
-    init_phys();
     init_paging();
+    init_phys();
 
-    void* ptr = palloc(1ULL<<12);
-    void* ptr2 = palloc(1ULL<<12);
+    void* ptr = pvalloc(1ULL<<12);
+    void* ptr2 = pvalloc(1ULL<<12);
 
-    write_serial_string(SERIAL_COM1, "Allocated Phys Addr: ");
+    write_serial_string(SERIAL_COM1, "Allocated Addr: ");
     write_serial_hex(SERIAL_COM1, (uintptr_t)ptr);
     write_serial_string(SERIAL_COM1, "\r\n");
 
-    write_serial_string(SERIAL_COM1, "Allocated Phys Addr: ");
+    write_serial_string(SERIAL_COM1, "Allocated Addr: ");
     write_serial_hex(SERIAL_COM1, (uintptr_t)ptr2);
     write_serial_string(SERIAL_COM1, "\r\n");
 
-    // write_serial_string(SERIAL_COM1, "\033[1mInitializing ACPI:\033[0m\r\n");
-    // init_acpi();
+    memset(ptr, 0xFA, 4096);
+    memset(ptr2, 0xEC, 4096);
+
+    write_serial_string(SERIAL_COM1, "\033[1mInitializing ACPI:\033[0m\r\n");
+    init_acpi();
 
     log_memmap();
     log_date_at_boot();
